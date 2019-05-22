@@ -17,4 +17,4 @@
 
 void connect_wifi();
 
-esp_err_t register_bits_on_ip_gotten_event( EventGroupHandle_and_EventBits listener);
+esp_err_t register_bits_on_ip_gotten_event( EventGroupHandle_and_EventBits *listener);

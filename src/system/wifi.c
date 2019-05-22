@@ -134,14 +134,14 @@ void connect_wifi()
         task_handle_connect_wifi);
 }
 
-esp_err_t register_bits_on_ip_gotten_event( EventGroupHandle_and_EventBits listener)
+esp_err_t register_bits_on_ip_gotten_event( EventGroupHandle_and_EventBits *listener)
 {
     if (listener_count < MAX_IP_LISTENERS)
     {
-        ESP_LOGI(TAG, "Registering to write bits [%d] for the given event group", listener.uxBitsToSet);
+        ESP_LOGI(TAG, "Registering to write bits [%d] for the given event group", listener->uxBitsToSet);
 
-        ip_listeners[listener_count].xEventGroup = listener.xEventGroup;
-        ip_listeners[listener_count].uxBitsToSet = listener.uxBitsToSet;
+        ip_listeners[listener_count].xEventGroup = listener->xEventGroup;
+        ip_listeners[listener_count].uxBitsToSet = listener->uxBitsToSet;
         listener_count += 1;
 
         return ESP_OK;
