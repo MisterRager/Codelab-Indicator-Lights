@@ -1,9 +1,13 @@
 #include "wifi.h"
 
+// These come in from the -D config vars in wifi_credentials.*
 #define WIFI_SSID CONFIG_WIFI_SSID
 #define WIFI_PASS CONFIG_WIFI_PASSWORD
 
-static const char *TAG = "ConnectWiFi";
+#define BIT_WIFI_READY BIT_NTH(0)
+#define BIT_WIFI_INITIALIZED BIT_NTH(1)
+
+#define TAG "ConnectWiFi"
 
 static wifi_config_t wifi_config = {
     .sta = {
@@ -15,7 +19,8 @@ static EventGroupHandle_t wifi_event_group;
 
 #define MAX_IP_LISTENERS 1
 
-static EventGroupHandle_and_EventBits ip_listeners[MAX_IP_LISTENERS];
+//static EventGroupHandle_and_EventBits ip_listeners[MAX_IP_LISTENERS];
+static void (*network_ready_callback_fns[MAX_IP_LISTENERS])();
 static int listener_count = 0;
 
 static esp_err_t sys_event_handler(void *ctx, system_event_t *event)
@@ -34,7 +39,7 @@ static esp_err_t sys_event_handler(void *ctx, system_event_t *event)
 
         for (int k = 0; k < listener_count; k++) {
             ESP_LOGI(TAG, "Toggle Bits for IP for listener [%d]", k);
-            xEventGroupSetBits(ip_listeners[k].xEventGroup, ip_listeners[k].uxBitsToSet);
+            network_ready_callback_fns[k]();
         }
         break;
     case SYSTEM_EVENT_STA_LOST_IP:
@@ -58,6 +63,8 @@ static TaskHandle_t task_handle_connect_wifi = NULL;
 
 static void connect_wifi_task(void *args)
 {
+    initialize_nvs_flash();
+
     ESP_LOGI(TAG, "Start task: Connect to WiFi");
     ESP_ERROR_CHECK(esp_event_loop_init(sys_event_handler, wifi_event_group));
 
@@ -111,18 +118,16 @@ void connect_wifi()
         task_handle_connect_wifi);
 }
 
-esp_err_t register_bits_on_ip_gotten_event( EventGroupHandle_and_EventBits *listener)
+esp_err_t register_network_ready_listener(void (*listener)())
 {
     if (listener_count < MAX_IP_LISTENERS)
     {
-        ESP_LOGI(
+        ESP_LOGI( 
             TAG,
-            "Registering to write bits [%d] for the given event group [%d]",
-            listener->uxBitsToSet,
-            (uint)listener->xEventGroup);
+            "Registering network ready callback [%d]",
+            (uint)listener);
 
-        ip_listeners[listener_count].xEventGroup = listener->xEventGroup;
-        ip_listeners[listener_count].uxBitsToSet = listener->uxBitsToSet;
+        network_ready_callback_fns[listener_count] = listener;
         listener_count += 1;
 
         return ESP_OK;
