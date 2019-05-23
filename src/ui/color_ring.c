@@ -1,28 +1,6 @@
 #include "color_ring.h"
 
-union Pixel pixel_rgb(uint8_t red, uint8_t green, uint8_t blue)
-{
-    return (union Pixel){
-        .components = (PixelBGRW){
-            .r = red,
-            .g = green,
-            .b = blue,
-        }
-    };
-}
-
-inline union Pixel rgb_spectrum(int rainbow_length, int index) {
-    int scaled = index * 764 / rainbow_length;
-    return (union Pixel){
-        .components = (PixelBGRW){
-            .r = scaled < 255 ? (255 - scaled)
-                     : (scaled >= 510 ? scaled - 509 : 0),
-            .g = scaled <= 255 ? scaled
-                               : (scaled >= 510 ? 0 : 510 - scaled),
-            .b = scaled <= 255 ? 0
-                               : (scaled <= 510 ? scaled - 255 : 764 - scaled),
-        }};
-}
+static const char TAG[] = "Color Ring";
 
 void ring_dim(float level, int length, struct led_state *ring)
 {
@@ -56,4 +34,41 @@ void ring_rotate(int length, struct led_state *ring)
             ring->leds[k] = first;
         }
     }
+}
+
+TaskHandle_t task_handle_spinning_rainbow = NULL;
+static void task_spin_rainbow(void *args)
+{
+    struct led_state *ring_ptr = (struct led_state *)args;
+
+    for (int k = 0; k < NUM_LEDS; k++)
+    {
+        ring_ptr->leds[k] = rgb_spectrum(NUM_LEDS, k);
+    }
+
+    ring_dim(0.1f, NUM_LEDS, ring_ptr);
+
+    while (1)
+    {
+        ws2812_write_leds(*ring_ptr);
+        vTaskDelay(6);
+        ESP_LOGI(TAG, "SPIN");
+        ring_rotate(NUM_LEDS, ring_ptr);
+    }
+}
+
+void ring_spinning_rainbow(struct led_state *ring_ptr)
+{
+    if (task_handle_spinning_rainbow)
+    {
+        vTaskDelete(task_handle_spinning_rainbow);
+    }
+
+    xTaskCreate(
+        task_spin_rainbow,
+        "Rainbow Spinner",
+        4096,
+        ring_ptr,
+        5,
+        task_handle_spinning_rainbow);
 }
