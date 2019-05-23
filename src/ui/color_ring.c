@@ -5,9 +5,9 @@
 #define BIT_STOP_SPIN BIT_NTH(1)
 #define BIT_IS_SPINNING BIT_NTH(2)
 
-void ring_dim(float level, int length, struct led_state *ring)
+void ring_dim(float level, struct led_state *ring)
 {
-    for (int k = 0; k < length; k++)
+    for (int k = 0; k < NUM_LEDS; k++)
     {
         ring->leds[k].components.r *= level;
         ring->leds[k].components.g *= level;
@@ -15,20 +15,20 @@ void ring_dim(float level, int length, struct led_state *ring)
     }
 }
 
-void ring_fill(union Pixel color, int length, struct led_state *ring)
+void ring_fill(union Pixel color, struct led_state *ring)
 {
-    for (int k = 0; k < length; k++)
+    for (int k = 0; k < NUM_LEDS; k++)
     {
         ring->leds[k] = color;
     }
 }
 
-void ring_rotate(int length, struct led_state *ring)
+void ring_rotate(struct led_state *ring)
 {
     union Pixel first = ring->leds[0];
-    for (int k = 0; k < length; k++)
+    for (int k = 0; k < NUM_LEDS; k++)
     {
-        if ((k + 1) < length)
+        if ((k + 1) < NUM_LEDS)
         {
             ring->leds[k] = ring->leds[k + 1];
         }
@@ -59,7 +59,7 @@ static void task_spin_ring(void *args)
     {
         ws2812_write_leds(*ring_ptr);
         vTaskDelay(6);
-        ring_rotate(NUM_LEDS, ring_ptr);
+        ring_rotate(ring_ptr);
     }
 
     ESP_LOGI(TAG, "Stopped spinning");

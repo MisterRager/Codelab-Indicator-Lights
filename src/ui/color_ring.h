@@ -46,12 +46,12 @@ inline union Pixel rgb_spectrum(int rainbow_length, int index)
 /**
  * Scale the brightness of the whole ring by a float.
  */
-void ring_dim(float level, int length, struct led_state *ring);
+void ring_dim(float level, struct led_state *ring);
 
 /**
  * Set each LED in the ring to the same color.
  */
-void ring_fill(union Pixel color, int length, struct led_state *ring);
+void ring_fill(union Pixel color, struct led_state *ring);
 
 /**
  * Fill the ring with the multi-color gradient defined by #rgb_spectrum.
@@ -61,7 +61,7 @@ void ring_fill_rainbow(struct led_state *ring_ptr);
 /**
  * Move every LED's pixel information down the line by 1, wrapping around.
  */
-void ring_rotate(int length, struct led_state *ring);
+void ring_rotate(struct led_state *ring);
 
 /**
  * Using a FreeRTOS task, display a spinning rainbow on the LED ring.
