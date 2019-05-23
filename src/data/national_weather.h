@@ -11,3 +11,7 @@ void fetch_forecasts(
     int grid_x,
     int grid_y,
     void (*response_callback)(cJSON *));
+
+void read_forecasts(
+    cJSON *json_root,
+    void (*forecast_callback_fn)(int, cJSON *));
