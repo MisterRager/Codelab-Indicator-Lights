@@ -52,12 +52,14 @@ static inline forecast_t extract_forecast_data(cJSON *forecast)
 
 static void consume_forecast_task(void *args)
 {
-    cJSON *json, *forecast;
+    ring_stop_spinning_rainbow();
+
+    cJSON *root, *json, *forecast;
     length_string_t *forecast_json = args;
 
     ESP_LOGI(TAG, "Process %d char of json", forecast_json->length);
 
-    json = cJSON_Parse(forecast_json->string);
+    root = json = cJSON_Parse(forecast_json->string);
 
     if (!json)
     {
@@ -83,22 +85,35 @@ static void consume_forecast_task(void *args)
     if (json)
     {
         ESP_LOGI(TAG, "Found the forecasts, iterating");
+        ring_fill(pixel_rgb(0, 0, 0), NUM_LEDS, &ring);
+
         forecast_t forecast_data;
+        int scaled_temp;
+        int index = 0;
 
         cJSON_ArrayForEach(forecast, json)
         {
             forecast_data = extract_forecast_data(forecast);
+
+            scaled_temp = 85 - forecast_data.temp;
+            ring.leds[index] = rgb_spectrum(60, scaled_temp > 0 ? scaled_temp : 0);
+
+            index++;
         }
+
+        ring_dim(0.02, NUM_LEDS, &ring);
+        ws2812_write_leds(ring);
     }
 
-    free(json);
+    free(args);
+    free(root);
+
     vTaskDelete(NULL);
 }
 
 static void on_receive_forecast(int forecast_len, char *forecast)
 {
     ESP_LOGI(TAG, "Recieved %d characters!", forecast_len);
-    ring_stop_spinning_rainbow();
 
     length_string_t *boat = (length_string_t *)malloc(sizeof(length_string_t));
 
