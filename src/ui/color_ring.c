@@ -55,12 +55,18 @@ static void task_spin_ring(void *args)
 
     ESP_LOGI(TAG, "Begin Spinning Task");
 
-    while (!(xEventGroupGetBits(group_handle_spin_ring) & BIT_STOP_SPIN))
+    do
     {
         ws2812_write_leds(*ring_ptr);
-        vTaskDelay(6);
         ring_rotate(ring_ptr);
-    }
+    } while (
+        !(xEventGroupWaitBits(
+              group_handle_spin_ring,
+              BIT_STOP_SPIN,
+              1, // Yes, clear after it is read
+              1, // Yes, wait for all bits specified
+              6) &
+          BIT_STOP_SPIN));
 
     ESP_LOGI(TAG, "Stopped spinning");
     xEventGroupClearBits(group_handle_spin_ring, BIT_STOP_SPIN | BIT_IS_SPINNING);
