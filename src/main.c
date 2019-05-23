@@ -52,7 +52,7 @@ static inline forecast_t extract_forecast_data(cJSON *forecast)
 
 static void consume_forecast_task(void *args)
 {
-    ring_stop_spinning_rainbow();
+    stop_animate_ring_rotate();
 
     cJSON *root, *json, *forecast;
     length_string_t *forecast_json = args;
@@ -103,6 +103,8 @@ static void consume_forecast_task(void *args)
 
         ring_dim(0.02, NUM_LEDS, &ring);
         ws2812_write_leds(ring);
+
+        animate_ring_rotate(&ring);
     }
 
     free(args);
@@ -130,12 +132,23 @@ static void on_receive_forecast(int forecast_len, char *forecast)
         NULL);
 }
 
+static void fetch_forecasts_task(void *args)
+{
+    ring_fill_rainbow(&ring);
+    ring_dim(0.02f, NUM_LEDS, &ring);
+    animate_ring_rotate(&ring);
+
+    fetch_forecasts(3, "TOP", 31, 80, on_receive_forecast);
+
+    vTaskDelete(NULL);
+}
+
 static void on_connect_task(void *args)
 {
     ESP_LOGI(TAG, "on_connect_task start");
     int wait_status;
-    EventGroupHandle_and_EventBits *ip_status = args;
 
+    EventGroupHandle_and_EventBits *ip_status = args;
     register_bits_on_ip_gotten_event(ip_status);
 
     wait_status = xEventGroupGetBits(ip_status->xEventGroup);
@@ -171,11 +184,7 @@ static void on_connect_task(void *args)
     }
 
     ESP_LOGI(TAG, "Connected!");
-
-    ring_spinning_rainbow(&ring);
-
-    fetch_forecasts(3, "TOP", 31, 80, on_receive_forecast);
-
+    xTaskCreate(fetch_forecasts_task, "fetch forecasts", 4096, NULL, 5, NULL);
     vTaskDelete(NULL);
 }
 

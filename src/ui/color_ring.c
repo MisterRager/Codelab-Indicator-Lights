@@ -39,20 +39,23 @@ void ring_rotate(int length, struct led_state *ring)
     }
 }
 
-EventGroupHandle_t group_handle_spin_rainbow = NULL;
+EventGroupHandle_t group_handle_spin_ring = NULL;
 
-static void task_spin_rainbow(void *args)
+void ring_fill_rainbow(struct led_state *ring_ptr)
 {
-    struct led_state *ring_ptr = (struct led_state *)args;
-
     for (int k = 0; k < NUM_LEDS; k++)
     {
         ring_ptr->leds[k] = rgb_spectrum(NUM_LEDS, k);
     }
+}
 
-    ring_dim(0.02f, NUM_LEDS, ring_ptr);
+static void task_spin_ring(void *args)
+{
+    struct led_state *ring_ptr = (struct led_state *)args;
 
-    while (!(xEventGroupGetBits(group_handle_spin_rainbow) & BIT_STOP_SPIN))
+    ESP_LOGI(TAG, "Begin Spinning Task");
+
+    while (!(xEventGroupGetBits(group_handle_spin_ring) & BIT_STOP_SPIN))
     {
         ws2812_write_leds(*ring_ptr);
         vTaskDelay(6);
@@ -60,41 +63,44 @@ static void task_spin_rainbow(void *args)
     }
 
     ESP_LOGI(TAG, "Stopped spinning");
-    xEventGroupClearBits(group_handle_spin_rainbow, BIT_STOP_SPIN | BIT_IS_SPINNING);
+    xEventGroupClearBits(group_handle_spin_ring, BIT_STOP_SPIN | BIT_IS_SPINNING);
     vTaskDelete(NULL);
 }
 
-void ring_spinning_rainbow(struct led_state *ring_ptr)
+void animate_ring_rotate(struct led_state *ring_ptr)
 {
-    if (!group_handle_spin_rainbow)
+    ESP_LOGI(TAG, "Request spinning");
+
+    if (!group_handle_spin_ring)
     {
-        group_handle_spin_rainbow = xEventGroupCreate();
+        group_handle_spin_ring = xEventGroupCreate();
     }
 
     // Do not start spinning if it already is?
-    if (xEventGroupGetBits(group_handle_spin_rainbow) & BIT_IS_SPINNING)
+    if (xEventGroupGetBits(group_handle_spin_ring) & BIT_IS_SPINNING)
     {
+        ESP_LOGI(TAG, "Already spinning!");
         return;
     }
 
-    xEventGroupClearBits(group_handle_spin_rainbow, BIT_STOP_SPIN);
-    xEventGroupSetBits(group_handle_spin_rainbow, BIT_IS_SPINNING);
+    xEventGroupClearBits(group_handle_spin_ring, BIT_STOP_SPIN);
+    xEventGroupSetBits(group_handle_spin_ring, BIT_IS_SPINNING);
 
     xTaskCreate(
-        task_spin_rainbow,
-        "Rainbow Spinner",
+        task_spin_ring,
+        "LED Spinner",
         4096,
         ring_ptr,
         5,
         NULL);
 }
 
-void ring_stop_spinning_rainbow()
+void stop_animate_ring_rotate()
 {
     ESP_LOGI(TAG, "Try to stop the spin");
-    if (xEventGroupGetBits(group_handle_spin_rainbow) & BIT_IS_SPINNING)
+    if (xEventGroupGetBits(group_handle_spin_ring) & BIT_IS_SPINNING)
     {
         ESP_LOGI(TAG, "Requesting spin stop...");
-        xEventGroupSetBits(group_handle_spin_rainbow, BIT_STOP_SPIN);
+        xEventGroupSetBits(group_handle_spin_ring, BIT_STOP_SPIN);
     }
 }
