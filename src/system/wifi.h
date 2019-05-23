@@ -11,8 +11,6 @@
 #include "event_group_listener.h"
 
 
-#define BIT_NTH(n) (1 << n)
-
 #define BIT_WIFI_READY BIT_NTH(0)
 #define BIT_WIFI_INITIALIZED BIT_NTH(1)
 

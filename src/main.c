@@ -8,15 +8,25 @@
 #include "system/wifi.h"
 #include "system/nvs.h"
 #include "ui/color_ring.h"
+#include "data/national_weather.h"
 
 #include <ws2812_control.h>
 
-const char *TAG = "Main";
+#define TAG "Main"
 
 #define BIT_HAS_IP BIT_NTH(1)
 #define MAX_TICKS_WAIT 10000
 
 struct led_state ring;
+
+static void on_receive_forecast(int forecast_len, char *forecast)
+{
+    ESP_LOGI(TAG, "Recieved %d characters!", forecast_len);
+    if (forecast_len)
+    {
+        ring_stop_spinning_rainbow();
+    }
+}
 
 static void on_connect_task(void *args)
 {
@@ -36,7 +46,7 @@ static void on_connect_task(void *args)
         ESP_LOGI(
             TAG,
             "Waiting to get ip address on group [%d] for bits [%d] for [%d] ticks",
-            (uint) ip_status->xEventGroup,
+            (uint)ip_status->xEventGroup,
             ip_status->uxBitsToSet,
             wait_ticks);
 
@@ -50,7 +60,8 @@ static void on_connect_task(void *args)
 
         wait_ticks += wait_ticks;
 
-        if (wait_ticks > MAX_TICKS_WAIT) {
+        if (wait_ticks > MAX_TICKS_WAIT)
+        {
             wait_ticks = MAX_TICKS_WAIT;
         }
 
@@ -60,6 +71,8 @@ static void on_connect_task(void *args)
     ESP_LOGI(TAG, "Connected!");
 
     ring_spinning_rainbow(&ring);
+
+    fetch_forecasts(3, "TOP", 31, 80, on_receive_forecast);
 
     vTaskDelete(NULL);
 }
@@ -91,7 +104,7 @@ void app_main()
     ESP_LOGI(
         TAG,
         "Listen for IP with handle [%d] on bits [%d]",
-        (uint) messages_ip_status.xEventGroup, messages_ip_status.uxBitsToSet);
+        (uint)messages_ip_status.xEventGroup, messages_ip_status.uxBitsToSet);
 
     xEventGroupClearBits(messages_ip_status.xEventGroup, messages_ip_status.uxBitsToSet);
     register_bits_on_ip_gotten_event(&messages_ip_status);

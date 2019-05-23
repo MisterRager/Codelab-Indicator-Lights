@@ -1,6 +1,9 @@
 #include "color_ring.h"
 
-static const char TAG[] = "Color Ring";
+#define TAG "Color Ring"
+
+#define BIT_STOP_SPIN BIT_NTH(1)
+#define BIT_IS_SPINNING BIT_NTH(2)
 
 void ring_dim(float level, int length, struct led_state *ring)
 {
@@ -36,7 +39,8 @@ void ring_rotate(int length, struct led_state *ring)
     }
 }
 
-TaskHandle_t task_handle_spinning_rainbow = NULL;
+EventGroupHandle_t group_handle_spin_rainbow = NULL;
+
 static void task_spin_rainbow(void *args)
 {
     struct led_state *ring_ptr = (struct led_state *)args;
@@ -48,20 +52,33 @@ static void task_spin_rainbow(void *args)
 
     ring_dim(0.02f, NUM_LEDS, ring_ptr);
 
-    while (1)
+    while (!(xEventGroupGetBits(group_handle_spin_rainbow) & BIT_STOP_SPIN))
     {
         ws2812_write_leds(*ring_ptr);
         vTaskDelay(6);
         ring_rotate(NUM_LEDS, ring_ptr);
     }
+
+    ESP_LOGI(TAG, "Stopped spinning");
+    xEventGroupClearBits(group_handle_spin_rainbow, BIT_STOP_SPIN | BIT_IS_SPINNING);
+    vTaskDelete(NULL);
 }
 
 void ring_spinning_rainbow(struct led_state *ring_ptr)
 {
-    if (task_handle_spinning_rainbow)
+    if (!group_handle_spin_rainbow)
     {
-        vTaskDelete(task_handle_spinning_rainbow);
+        group_handle_spin_rainbow = xEventGroupCreate();
     }
+
+    // Do not start spinning if it already is?
+    if (xEventGroupGetBits(group_handle_spin_rainbow) & BIT_IS_SPINNING)
+    {
+        return;
+    }
+
+    xEventGroupClearBits(group_handle_spin_rainbow, BIT_STOP_SPIN);
+    xEventGroupSetBits(group_handle_spin_rainbow, BIT_IS_SPINNING);
 
     xTaskCreate(
         task_spin_rainbow,
@@ -69,5 +86,15 @@ void ring_spinning_rainbow(struct led_state *ring_ptr)
         4096,
         ring_ptr,
         5,
-        task_handle_spinning_rainbow);
+        NULL);
+}
+
+void ring_stop_spinning_rainbow()
+{
+    ESP_LOGI(TAG, "Try to stop the spin");
+    if (xEventGroupGetBits(group_handle_spin_rainbow) & BIT_IS_SPINNING)
+    {
+        ESP_LOGI(TAG, "Requesting spin stop...");
+        xEventGroupSetBits(group_handle_spin_rainbow, BIT_STOP_SPIN);
+    }
 }

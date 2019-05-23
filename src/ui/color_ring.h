@@ -2,7 +2,9 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/event_groups.h>
 
+#include "../system/event_group_listener.h"
 #include <ws2812_control.h>
 
 /**
@@ -60,3 +62,8 @@ void ring_rotate(int length, struct led_state *ring);
  * Using a FreeRTOS task, display a spinning rainbow on the LED ring.
  */
 void ring_spinning_rainbow(struct led_state *ring_ptr);
+
+/**
+ * Stop the "spinning rainbow" task.
+ */
+void ring_stop_spinning_rainbow();
