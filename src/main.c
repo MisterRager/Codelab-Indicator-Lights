@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/event_groups.h>
@@ -11,6 +13,7 @@
 #include "data/national_weather.h"
 
 #include <ws2812_control.h>
+#include <cJSON.h>
 
 #define TAG "Main"
 
@@ -19,13 +22,97 @@
 
 struct led_state ring;
 
+typedef struct
+{
+    int length;
+    char *string;
+} length_string_t;
+
+typedef struct
+{
+    char * name;
+    int temp;
+    char * temp_unit;
+} forecast_t;
+
+static inline forecast_t extract_forecast_data(cJSON *forecast)
+{
+    cJSON *name, *temp, *temp_unit;
+
+    name = cJSON_GetObjectItem(forecast, "name");
+    temp = cJSON_GetObjectItem(forecast, "temperature");
+    temp_unit = cJSON_GetObjectItem(forecast, "temperatureUnit");
+
+    return (forecast_t){
+        .name = name->valuestring,
+        .temp = temp->valueint,
+        .temp_unit = temp_unit->valuestring,
+    };
+}
+
+static void consume_forecast_task(void *args)
+{
+    cJSON *json, *forecast;
+    length_string_t *forecast_json = args;
+
+    ESP_LOGI(TAG, "Process %d char of json", forecast_json->length);
+
+    json = cJSON_Parse(forecast_json->string);
+
+    if (!json)
+    {
+        ESP_LOGE(TAG, "Failed to parse anything?");
+        return;
+    }
+
+    json = cJSON_GetObjectItemCaseSensitive(json, "properties");
+
+    if (!json)
+    {
+        ESP_LOGE(TAG, "Failed to find node \"properties\" in root");
+        return;
+    }
+
+    json = cJSON_GetObjectItemCaseSensitive(json, "periods");
+    if (!json)
+    {
+        ESP_LOGE(TAG, "Failed to find node \"periods\" in node \"properties\"");
+        return;
+    }
+
+    if (json)
+    {
+        ESP_LOGI(TAG, "Found the forecasts, iterating");
+        forecast_t forecast_data;
+
+        cJSON_ArrayForEach(forecast, json)
+        {
+            forecast_data = extract_forecast_data(forecast);
+        }
+    }
+
+    free(json);
+    vTaskDelete(NULL);
+}
+
 static void on_receive_forecast(int forecast_len, char *forecast)
 {
     ESP_LOGI(TAG, "Recieved %d characters!", forecast_len);
-    if (forecast_len)
-    {
-        ring_stop_spinning_rainbow();
-    }
+    ring_stop_spinning_rainbow();
+
+    length_string_t *boat = (length_string_t *)malloc(sizeof(length_string_t));
+
+    boat->length = forecast_len;
+    boat->string = forecast;
+
+    ESP_LOGI(TAG, "launch forecast consume task");
+    xTaskCreate(
+        consume_forecast_task,
+        "consume forecast",
+        4096,
+        boat,
+        5,
+        NULL);
 }
 
 static void on_connect_task(void *args)
