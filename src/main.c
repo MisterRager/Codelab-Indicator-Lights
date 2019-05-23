@@ -13,7 +13,8 @@
 
 const char *TAG = "Main";
 
-#define BIT_HAS_IP BIT_NTH(0)
+#define BIT_HAS_IP BIT_NTH(1)
+#define MAX_TICKS_WAIT 10000
 
 struct led_state ring;
 
@@ -25,18 +26,36 @@ static void on_connect_task(void *args)
 
     register_bits_on_ip_gotten_event(ip_status);
 
-    do
+    wait_status = xEventGroupGetBits(ip_status->xEventGroup);
+    ESP_LOGI(TAG, "IP Status is [%d]", wait_status);
+
+    uint wait_ticks = 50;
+
+    while (!(wait_status & BIT_HAS_IP))
     {
-        ESP_LOGI(TAG, "Waiting for network to get ip address");
+        ESP_LOGI(
+            TAG,
+            "Waiting to get ip address on group [%d] for bits [%d] for [%d] ticks",
+            (uint) ip_status->xEventGroup,
+            ip_status->uxBitsToSet,
+            wait_ticks);
 
         wait_status = xEventGroupWaitBits(
             ip_status->xEventGroup,
             ip_status->uxBitsToSet,
             0 /* clear on exit */,
             1 /* wait for all bits */,
-            10 /* Number of ticks to wait */
+            wait_ticks /* Number of ticks to wait */
         );
-    } while (!(wait_status | BIT_HAS_IP));
+
+        wait_ticks += wait_ticks;
+
+        if (wait_ticks > MAX_TICKS_WAIT) {
+            wait_ticks = MAX_TICKS_WAIT;
+        }
+
+        ESP_LOGI(TAG, "Status is [%d]", wait_status);
+    }
 
     ESP_LOGI(TAG, "Connected!");
 
@@ -45,10 +64,10 @@ static void on_connect_task(void *args)
     vTaskDelete(NULL);
 }
 
+static EventGroupHandle_and_EventBits messages_ip_status;
+
 void app_main()
 {
-    EventGroupHandle_and_EventBits ip_status;
-
     ESP_LOGI(TAG, "Hello!!");
     ESP_LOGI(TAG, "Initialize Lights");
     ws2812_control_init();
@@ -63,10 +82,21 @@ void app_main()
 
     ESP_LOGI(TAG, "Initialize WiFi");
 
-    ip_status.xEventGroup = xEventGroupCreate();
-    ip_status.uxBitsToSet = BIT_HAS_IP;
-    register_bits_on_ip_gotten_event(&ip_status);
-    xTaskCreate(on_connect_task, "On-Connect", 4096, &ip_status, 5, NULL);
+    // Set up listener for IP Address received
+    messages_ip_status = (EventGroupHandle_and_EventBits){
+        .xEventGroup = xEventGroupCreate(),
+        .uxBitsToSet = BIT_HAS_IP,
+    };
+
+    ESP_LOGI(
+        TAG,
+        "Listen for IP with handle [%d] on bits [%d]",
+        (uint) messages_ip_status.xEventGroup, messages_ip_status.uxBitsToSet);
+
+    xEventGroupClearBits(messages_ip_status.xEventGroup, messages_ip_status.uxBitsToSet);
+    register_bits_on_ip_gotten_event(&messages_ip_status);
+
+    xTaskCreate(on_connect_task, "On-Connect", 4096, &messages_ip_status, 5, NULL);
 
     connect_wifi();
     ESP_LOGI(TAG, "Finished setting up, wait for network...");

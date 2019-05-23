@@ -54,42 +54,19 @@ static esp_err_t sys_event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-#define MAX_WAIT_TICKS 100
-
 static TaskHandle_t task_handle_connect_wifi = NULL;
 
 static void connect_wifi_task(void *args)
 {
     ESP_LOGI(TAG, "Start task: Connect to WiFi");
-    EventBits_t status = 0;
-    int wait_ticks = 10;
-    int wait_ticks_next;
     ESP_ERROR_CHECK(esp_event_loop_init(sys_event_handler, wifi_event_group));
 
-    status = xEventGroupGetBits(wifi_event_group);
-
-    do
-    {
-        ESP_LOGI(TAG, "Wait for WiFi to be ready");
-
-        status = xEventGroupWaitBits(
-            wifi_event_group,
-            BIT_WIFI_READY,
-            0 /* Clear on Exit */,
-            1 /* Wait for All */,
-            wait_ticks);
-
-        wait_ticks_next = wait_ticks * 1.5;
-        wait_ticks = wait_ticks_next > MAX_WAIT_TICKS ? MAX_WAIT_TICKS : wait_ticks_next;
-    } while (!(status | BIT_WIFI_READY));
-
-    ESP_LOGI(TAG, "Done waiting, start init!");
-
     tcpip_adapter_init();
-
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+
+    ESP_LOGI(TAG, "Done waiting, start init!");
 
     ESP_LOGI(
         TAG,
@@ -138,7 +115,11 @@ esp_err_t register_bits_on_ip_gotten_event( EventGroupHandle_and_EventBits *list
 {
     if (listener_count < MAX_IP_LISTENERS)
     {
-        ESP_LOGI(TAG, "Registering to write bits [%d] for the given event group", listener->uxBitsToSet);
+        ESP_LOGI(
+            TAG,
+            "Registering to write bits [%d] for the given event group [%d]",
+            listener->uxBitsToSet,
+            (uint)listener->xEventGroup);
 
         ip_listeners[listener_count].xEventGroup = listener->xEventGroup;
         ip_listeners[listener_count].uxBitsToSet = listener->uxBitsToSet;

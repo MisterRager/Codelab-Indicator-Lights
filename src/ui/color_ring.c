@@ -52,7 +52,6 @@ static void task_spin_rainbow(void *args)
     {
         ws2812_write_leds(*ring_ptr);
         vTaskDelay(6);
-        ESP_LOGI(TAG, "SPIN");
         ring_rotate(NUM_LEDS, ring_ptr);
     }
 }
