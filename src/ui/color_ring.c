@@ -46,7 +46,7 @@ static void task_spin_rainbow(void *args)
         ring_ptr->leds[k] = rgb_spectrum(NUM_LEDS, k);
     }
 
-    ring_dim(0.1f, NUM_LEDS, ring_ptr);
+    ring_dim(0.02f, NUM_LEDS, ring_ptr);
 
     while (1)
     {

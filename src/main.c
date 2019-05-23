@@ -1,15 +1,15 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/event_groups.h>
 
-#include "esp_log.h"
+#include <esp_log.h>
 
 #include "system/event_group_listener.h"
 #include "system/wifi.h"
 #include "system/nvs.h"
 #include "ui/color_ring.h"
 
-#include "../lib/ESP32-NeoPixel-WS2812-RMT/ws2812_control.h"
+#include <ws2812_control.h>
 
 const char *TAG = "Main";
 
@@ -54,7 +54,8 @@ void app_main()
     ws2812_control_init();
 
     // Orange status until connected
-    ring_fill(pixel_rgb(20, 10, 0), NUM_LEDS, &ring);
+    ring_fill(pixel_rgb(255, 200, 0), NUM_LEDS, &ring);
+    ring_dim(0.02, NUM_LEDS, &ring);
     ws2812_write_leds(ring);
 
     ESP_LOGI(TAG, "Initialize NVS");
