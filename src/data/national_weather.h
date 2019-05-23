@@ -10,4 +10,4 @@ void fetch_forecasts(
     char *forecast_office,
     int grid_x,
     int grid_y,
-    http_response_callback response_callback);
+    void (*response_callback)(cJSON *));

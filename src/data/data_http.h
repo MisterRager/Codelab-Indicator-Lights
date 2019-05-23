@@ -2,13 +2,12 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_http_client.h>
-
-typedef void (*http_response_callback)(int, char *);
+#include <cJSON.h>
 
 typedef struct
 {
     char *url;
-    http_response_callback on_success_fn;
+    void (*on_success_fn)(cJSON *);
     void (*configure_client_fn)(esp_http_client_handle_t);
 } http_request;
 

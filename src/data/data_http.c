@@ -6,7 +6,7 @@
 static char response_buffer[BUFFER_LEN];
 static char *cursor = response_buffer;
 
-static http_response_callback response_callback_fn;
+static void (*response_callback_fn)(cJSON *);
 
 static inline void reset_state()
 {
@@ -42,7 +42,8 @@ static esp_err_t request_callback(esp_http_client_event_t *event)
 
         if (response_callback_fn)
         {
-            response_callback_fn(cursor - response_buffer, response_buffer);
+            //response_callback_fn(cursor - response_buffer, response_buffer);
+            response_callback_fn(cJSON_Parse(response_buffer));
         }
 
         reset_state();

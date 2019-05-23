@@ -8,13 +8,10 @@ void fetch_forecasts(
     char *forecast_office,
     int grid_x,
     int grid_y,
-    http_response_callback response_callback
-)
+    void (*response_callback)(cJSON *))
 {
-
     char *url = (char *)malloc(
-        (
-            sizeof(URI_FORECAST_TEMPLATE) / sizeof(char)) -
+        (sizeof(URI_FORECAST_TEMPLATE) / sizeof(char)) -
         5 + forecast_office_len + (grid_x / 10 + 1) + (grid_y / 10 + 1));
 
     sprintf(url, URI_FORECAST_TEMPLATE, forecast_office, grid_x, grid_y);
